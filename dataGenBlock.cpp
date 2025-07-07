@@ -7,10 +7,10 @@
 #include <chrono>
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
+#include "common/commonArgs.h"
 
 #define MAX UINT8_MAX
 #define MIN 0
-const char* pipeName = R"(\\.\pipe\MyPipe)";
 
 uint8_t generateRandomNumber()
 {
