@@ -1,13 +1,12 @@
 // already correct:
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
-#include <cstdint>
-#include <climits>
+
 #include <chrono>
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
 #include "common/commonArgs.h"
+#include "common/namedPipes.h"
+
 
 #define MAX UINT8_MAX
 #define MIN 0
@@ -21,33 +20,20 @@ uint8_t generateRandomNumber()
 // try using function templates or pointers
 void randomNumberGen1()
 {
-    HANDLE hPipe;
-
-    hPipe = CreateFileA(
-        pipeName,             // pipe name
-        GENERIC_WRITE,        // write access
-        0,                    // no sharing
-        NULL,                 // default security attributes
-        OPEN_EXISTING,        // opens existing pipe
-        0,                    // default attributes
-        NULL);                // no template file
+    HANDLE hPipe = createWriterPipe();
 
     if (hPipe == INVALID_HANDLE_VALUE) {
         std::cerr << "Failed to connect to pipe. Error: " << GetLastError() << "\n";
         return;
     }
-
-    DWORD bytesWritten;
     while (1)
     {
         uint8_t dataPt = generateRandomNumber();
 
-        // You must pass the address of dataPt, not the value
-        BOOL success = WriteFile(hPipe, &dataPt, 1, &bytesWritten, NULL);
-        if (!success)
+        BOOL success = writeToPipe(hPipe, &dataPt, 1);
+        if(!success)
         {
-            std::cerr << "Write has failed. Error: " << GetLastError() << "\n";
-            break;  // Stop on write failure
+            std::cerr << "error writing to the pipe " << std::endl;
         }
     }
 
@@ -57,24 +43,13 @@ void randomNumberGen1()
 // try using function templates or pointers
 void randomNumberGen2()
 {
-    HANDLE hPipe = CreateNamedPipeA(
-        pipeName,                  // name of the pipe
-        PIPE_ACCESS_DUPLEX,       // read/write access
-        PIPE_TYPE_MESSAGE |       // message-type pipe
-        PIPE_READMODE_MESSAGE |   // message read mode
-        PIPE_WAIT,                // blocking mode
-        1,                        // max. instances
-        1024,                     // output buffer size
-        1024,                     // input buffer size
-        0,                        // client time-out
-        NULL);                    // default security attribute
-    
+    HANDLE hPipe = createReaderPipe();
     if(hPipe == INVALID_HANDLE_VALUE )
     {
         // replace this with the logger process
         std::cerr << "Pipe cannot be made on the server side" << std::endl;
     }
-    BOOL connected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+    BOOL connected = connectToClient(hPipe);
     std::cout << "Client connected!\n";
     while(1)
     {
@@ -82,15 +57,16 @@ void randomNumberGen2()
         {
             uint8_t dataPt;
             DWORD bytesRead;
+            BOOL success = readFromPipe(hPipe, &dataPt, 1);
 
-            BOOL success = ReadFile(hPipe, &dataPt, sizeof(dataPt), &bytesRead, NULL);
-            if(success && bytesRead)
+            if(!success)
             {
-                std::cout << static_cast<int>(dataPt) << std::endl;
-            }
-            else{
                 std::cerr << "file read has failed " << std::endl; 
             }
+        }
+        else
+        {
+            std::cerr << "Pipe is disconnected " << std::endl;
         }
     }
     DisconnectNamedPipe(hPipe);
