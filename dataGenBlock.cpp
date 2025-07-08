@@ -1,6 +1,5 @@
 // already correct:
 #include <iostream>
-
 #include <chrono>
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
@@ -36,7 +35,7 @@ void randomNumberGen1()
             std::cerr << "error writing to the pipe " << std::endl;
         }
     }
-
+    DisconnectNamedPipe(hPipe);
     CloseHandle(hPipe);
 }
 
@@ -63,6 +62,10 @@ void randomNumberGen2()
             {
                 std::cerr << "file read has failed " << std::endl; 
             }
+            else
+            {
+                std::cout << static_cast<int> (dataPt) << std::endl;
+            }
         }
         else
         {
@@ -75,8 +78,13 @@ void randomNumberGen2()
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
+
+    if(argc < 1)
+    {
+        // this means we are manually generating the random numbers
+    }
     std::srand(static_cast<unsigned int>(std::time(0)));
 
     std::thread t2(randomNumberGen2); // start server first
