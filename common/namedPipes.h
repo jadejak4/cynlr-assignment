@@ -28,6 +28,10 @@ BOOL writeToPipe(HANDLE hPipe, uint8_t* dataPt, int len)
 {
     DWORD bytesWritten;
     BOOL success = WriteFile(hPipe, dataPt, len, &bytesWritten, NULL);
+    if(!success)
+    {
+        std::cerr << "write has failed " << std::endl;
+    }
     return success;
 }
 
@@ -58,7 +62,7 @@ BOOL readFromPipe(HANDLE hPipe, uint8_t* dataPt, int len)
     DWORD bytesRead;
 
     BOOL success = ReadFile(hPipe, dataPt, len, &bytesRead, NULL);
-    if(!success || (bytesRead < len))
+    if(!success)
     {
         std::cerr << "file read has failed " << std::endl; 
     }
