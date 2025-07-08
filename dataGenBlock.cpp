@@ -5,6 +5,7 @@
 #include <windows.h>   // For Windows APIs
 #include "common/commonArgs.h"
 #include "common/namedPipes.h"
+#include "dataGenBlock.h"
 
 
 #define MAX UINT8_MAX
@@ -19,7 +20,7 @@ uint8_t generateRandomNumber()
 // try using function templates or pointers
 void randomNumberGen1()
 {
-    HANDLE hPipe = createWriterPipe();
+    HANDLE hPipe = createWriterPipe(internalPipeName);
 
     if (hPipe == INVALID_HANDLE_VALUE) {
         std::cerr << "Failed to connect to pipe. Error: " << GetLastError() << "\n";
@@ -42,39 +43,52 @@ void randomNumberGen1()
 // try using function templates or pointers
 void randomNumberGen2()
 {
-    HANDLE hPipe = createReaderPipe();
-    if(hPipe == INVALID_HANDLE_VALUE )
-    {
-        // replace this with the logger process
-        std::cerr << "Pipe cannot be made on the server side" << std::endl;
-    }
-    BOOL connected = connectToClient(hPipe);
-    std::cout << "Client connected!\n";
-    while(1)
-    {
-        if(connected)
-        {
-            uint8_t dataPt;
-            DWORD bytesRead;
-            BOOL success = readFromPipe(hPipe, &dataPt, 1);
+    HANDLE hPipe = createWriterPipe(internalPipeName);
 
-            if(!success)
-            {
-                std::cerr << "file read has failed " << std::endl; 
-            }
-            else
-            {
-                std::cout << static_cast<int> (dataPt) << std::endl;
-            }
-        }
-        else
+    if (hPipe == INVALID_HANDLE_VALUE) {
+        std::cerr << "Failed to connect to pipe. Error: " << GetLastError() << "\n";
+        return;
+    }
+    while (1)
+    {
+        uint8_t dataPt = generateRandomNumber();
+
+        BOOL success = writeToPipe(hPipe, &dataPt, 1);
+        if(!success)
         {
-            std::cerr << "Pipe is disconnected " << std::endl;
+            std::cerr << "error writing to the pipe " << std::endl;
         }
     }
     DisconnectNamedPipe(hPipe);
     CloseHandle(hPipe);
-    return;
+}
+
+void sendDataToFilterBlock()
+{
+    HANDLE writerPipe = createWriterPipe(data_fliterPipe);
+    HANDLE readerPipe = createReaderPipe(internalPipeName);
+    if(readerPipe == INVALID_HANDLE_VALUE || writerPipe == INVALID_HANDLE_VALUE)
+    {
+        std::cerr << "pipe handles are invalid " << std::endl;
+    }
+    BOOL connected = connectToClient(readerPipe);
+    while(1)
+    {
+        if(connected)
+        {
+            uint8_t dataPt[2];
+            BOOL success = readFromPipe(readerPipe, dataPt, 2);
+            if(success)
+            {
+                if(success)
+                {
+                    std::cout << static_cast<int>(dataPt[0]) << " " << static_cast<int>(dataPt[1]) << std::endl;
+                }
+                // BOOL success = writeToPipe(writerPipe, &dataPt, 2);
+            }
+        }
+    }
+
 }
 
 
@@ -86,11 +100,12 @@ int main(int argc, char *argv[])
         // this means we are manually generating the random numbers
     }
     std::srand(static_cast<unsigned int>(std::time(0)));
-
-    std::thread t2(randomNumberGen2); // start server first
-    std::this_thread::sleep_for(std::chrono::milliseconds(1)); // wait for pipe to be created
+    // starting the thread for receiving the data
+    std::thread t3(sendDataToFilterBlock);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1)); // wait for pipe to be create
     std::thread t1(randomNumberGen1); // then start client
 
+    t3.join();
     t2.join();
     t1.join();
 

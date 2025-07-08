@@ -8,7 +8,7 @@
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
 
-HANDLE createWriterPipe()
+HANDLE createWriterPipe(const char* pipeName)
 {
     HANDLE hPipe;
     hPipe = CreateFileA(
@@ -31,7 +31,7 @@ BOOL writeToPipe(HANDLE hPipe, uint8_t* dataPt, int len)
     return success;
 }
 
-HANDLE createReaderPipe()
+HANDLE createReaderPipe(const char* pipeName)
 {
         
     HANDLE hPipe = CreateNamedPipeA(
@@ -58,7 +58,7 @@ BOOL readFromPipe(HANDLE hPipe, uint8_t* dataPt, int len)
     DWORD bytesRead;
 
     BOOL success = ReadFile(hPipe, dataPt, len, &bytesRead, NULL);
-    if(!success || (bytesRead <= 0))
+    if(!success || (bytesRead < len))
     {
         std::cerr << "file read has failed " << std::endl; 
     }
