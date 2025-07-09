@@ -11,13 +11,13 @@
 #define MAX UINT8_MAX
 #define MIN 0
 
+
+// this can be redefined as a template.
 uint8_t generateRandomNumber()
-{
-    
+{   
     return static_cast<uint8_t>(MIN + std::rand() % (MAX - MIN + 1));
 }
 
-// try using function templates or pointers
 void randomNumberGen1()
 {
     HANDLE hPipe = createWriterPipe(internalPipeName);

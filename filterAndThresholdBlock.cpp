@@ -30,13 +30,15 @@ void filteringThread(int thresholdValue)
                 std::lock_guard<std::mutex> lock(windowMutex);  
                 localCopy = windowElements;
             }
-            for(int i = 0; i < localCopy.size(); i++)
-            {
-                std::cout << static_cast<int>(localCopy[i]) << " ";
-            }
-            std::cout << " output ";
             double res = filteredOutput(localCopy);
-            std::cout << res << std::endl;
+            if(res < thresholdValue)
+            {
+                // output true;
+            }
+            else
+            {
+                //output false;
+            }
         }   
 }
         
