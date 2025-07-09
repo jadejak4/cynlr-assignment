@@ -3,6 +3,5 @@
 #include <stdio.h>
 #include <atomic>
 
-const char* internalPipeName = R"(\\.\pipe\MyPipe1)";
 
 std::atomic<int> dataPt[2];

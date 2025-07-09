@@ -30,27 +30,34 @@ void randomNumberGen()
 
 void sendDataToFilterBlock()
 {
-    // creating a local buffer
     uint8_t localBuffer[2];
-    HANDLE hMap = createSharedMemory("Global\\MySharedMemory", 1024);
-    void *ptr = mapSharedMemory(hMap, 1024);
-    if(hMap == INVALID_HANDLE_VALUE)
+
+    HANDLE hMap = createSharedMemory(data_fliterMemory, 1024);
+    if (hMap == NULL || hMap == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "could not access shared memory " << std::endl;
+        std::cerr << "CreateFileMapping failed. Error: " << GetLastError() << std::endl;
+        return;
+    }
+
+    void* ptr = mapSharedMemory(hMap, 1024);
+    if (ptr == nullptr)
+    {
+        std::cerr << "MapViewOfFile failed. Error: " << GetLastError() << std::endl;
+        CloseHandle(hMap);
+        return;
     }
 
     while (true)
     {
-            auto start = std::chrono::high_resolution_clock::now();  // Start timestamp
-            localBuffer[0] = dataPt[0];
-            localBuffer[1] = dataPt[1];
-            writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
-            auto end = std::chrono::high_resolution_clock::now();  // End timestamp
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-
-
-            std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+        localBuffer[0] = dataPt[0];
+        localBuffer[1] = dataPt[1];
+        writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
+        auto end = std::chrono::high_resolution_clock::now();  // End time
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
     }
+
     unmapSharedMemory(ptr);
     closeSharedMemory(hMap);
 }

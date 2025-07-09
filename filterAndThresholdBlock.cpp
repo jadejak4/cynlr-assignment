@@ -46,38 +46,47 @@ void filteringThread(int thresholdValue)
 
 void slidingWindowThread()
 {
-    
-    HANDLE hPipe = createReaderPipe(data_fliterPipe);
-    if(hPipe == INVALID_HANDLE_VALUE )
+    HANDLE hMap = openSharedMemory(data_fliterMemory);
+    if (hMap == NULL || hMap == INVALID_HANDLE_VALUE)
     {
-        // replace this with the logger process
-        std::cerr << "Pipe cannot be made on the server side" << std::endl;
-    }   
-    BOOL connected = connectToClient(hPipe);
-    if(connected)
-    {
-        std::cout << "Client Connected " << std::endl;
+        std::cerr << "Memory cannot be accessed from the filterSide. Error: " << GetLastError() << std::endl;
+        return;
     }
 
-while (1)
-{
-    uint8_t dataPt;
-    BOOL success = readFromPipe(hPipe, &dataPt, 1);
-    if (success)
+    void* ptr = mapSharedMemory(hMap, 1024);
+    if (ptr == nullptr)
     {
-        std::lock_guard<std::mutex> lock(windowMutex);
-        if (windowElements.size() == WINDOW_SIZE)
+        std::cerr << "MapViewOfFile failed. Error: " << GetLastError() << std::endl;
+        CloseHandle(hMap);
+        return;
+    }
+
+    while (true)
+    {
+        uint8_t dataPt;  // Must match writer’s 2-byte write
+        bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
+        if (success)
         {
-            windowFull = true;
-            windowElements.pop_back();
+            std::lock_guard<std::mutex> lock(windowMutex);
+            if (windowElements.size() == WINDOW_SIZE)
+            {
+                windowFull = true;
+                windowElements.pop_back();
+            }
+                windowElements.insert(windowElements.begin(), dataPt);
+            // Print window
+            for (int i = 0; i < windowElements.size(); ++i)
+            {
+                std::cout << static_cast<int>(windowElements[i]) << " ";
+            }
+            std::cout << std::endl;
         }
-        windowElements.insert(windowElements.begin(), dataPt);
+
     }
+
+    unmapSharedMemory(ptr);
+    closeSharedMemory(hMap);
 }
-
-
-}
-
 
 int main(int argc, char* argv[])
 {
@@ -95,8 +104,8 @@ int main(int argc, char* argv[])
     // added for testing
     // uint8_t testValues[WINDOW_SIZE] = {23,156, 223, 2, 67, 79, 110, 128, 208}; 
     std::thread t1(slidingWindowThread);
-    std::thread t2(filteringThread, DEBUG_THRESHOLD_VALUE);
+    // std::thread t2(filteringThread, DEBUG_THRESHOLD_VALUE);
     t1.join();
-    t2.join();
+    // t2.join();
     
 }
