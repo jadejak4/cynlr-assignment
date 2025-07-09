@@ -5,3 +5,4 @@
 
 
 volatile std::atomic<int> dataPt[2];
+std::atomic<bool> dataUpdated = false;
