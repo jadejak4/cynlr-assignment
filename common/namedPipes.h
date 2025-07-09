@@ -24,7 +24,7 @@ HANDLE createWriterPipe(const char* pipeName)
 
 }
 
-BOOL writeToPipe(HANDLE hPipe, uint8_t* dataPt, int len)
+inline BOOL writeToPipe(HANDLE hPipe, uint8_t* dataPt, int len)
 {
     DWORD bytesWritten = 0;
     BOOL success = WriteFile(hPipe, dataPt, len, &bytesWritten, NULL);
