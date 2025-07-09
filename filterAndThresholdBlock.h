@@ -11,13 +11,17 @@
 #include <atomic>
 #include <vector>
 #include <mutex>
-#define DEBUG_THRESHOLD_VALUE 10
+#define DEBUG_THRESHOLD_VALUE 100.0
 #define WINDOW_SIZE 9
+
+
+
 
 // Global window buffer and status flag
 std::atomic<bool> windowFull = false; 
 std::vector<uint8_t> windowElements;
 std::mutex windowMutex;
+
 
 // Filter coefficients
 static constexpr double filterCofficients[WINDOW_SIZE] = {
@@ -28,6 +32,6 @@ static constexpr double filterCofficients[WINDOW_SIZE] = {
 };
 
 // Function declarations
-double filteredOutput(const std::vector<uint8_t> values);
-void filteringThread(int thresholdValue);
+double filteredOutput(const std::vector<uint8_t> &values);
+void filteringThread(double thresholdValue);
 void slidingWindowThread();

@@ -1,4 +1,3 @@
-// already correct:
 #include <iostream>
 #include <chrono>
 #include <thread>      // For std::thread
@@ -49,13 +48,9 @@ void sendDataToFilterBlock()
 
     while (true)
     {
-        auto start = std::chrono::high_resolution_clock::now();
         localBuffer[0] = dataPt[0];
         localBuffer[1] = dataPt[1];
         writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
-        auto end = std::chrono::high_resolution_clock::now();  // End time
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-        std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
     }
 
     unmapSharedMemory(ptr);

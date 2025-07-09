@@ -4,4 +4,4 @@
 #include <atomic>
 
 
-std::atomic<int> dataPt[2];
+volatile std::atomic<int> dataPt[2];

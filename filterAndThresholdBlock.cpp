@@ -6,7 +6,7 @@
 #include <iostream>
 #include <algorithm>
 
-inline double filteredOutput(const std::vector<uint8_t> values)
+inline double filteredOutput(const std::vector<uint8_t> &values)
 {
     double multipliedVal = 0;
     for(int i = 0; i < WINDOW_SIZE; i++)    
@@ -18,8 +18,7 @@ inline double filteredOutput(const std::vector<uint8_t> values)
 }
 
 
-// we can make it so that 
-void filteringThread(int thresholdValue)
+void filteringThread(double thresholdValue)
 {
     while (1)
     {
@@ -30,15 +29,22 @@ void filteringThread(int thresholdValue)
                 std::lock_guard<std::mutex> lock(windowMutex);  
                 localCopy = windowElements;
             }
+
             double res = filteredOutput(localCopy);
-            if(res < thresholdValue)
+            end = std::chrono::high_resolution_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            std::cout << duration.count() << std::endl;
+            // this window has been processed. We do not want to porcess the same data again
+            windowFull = false;
+            if(res >= thresholdValue)
             {
-                // output true;
+                // output true to the next block
             }
             else
             {
-                //output false;
+                // output false to the next block
             }
+           
         }   
 }
         
@@ -63,7 +69,7 @@ void slidingWindowThread()
 
     while (true)
     {
-        uint8_t dataPt;  // Must match writer’s 2-byte write
+        uint8_t dataPt;  
         bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
         if (success)
         {
@@ -73,13 +79,7 @@ void slidingWindowThread()
                 windowFull = true;
                 windowElements.pop_back();
             }
-                windowElements.insert(windowElements.begin(), dataPt);
-            // Print window
-            for (int i = 0; i < windowElements.size(); ++i)
-            {
-                std::cout << static_cast<int>(windowElements[i]) << " ";
-            }
-            std::cout << std::endl;
+            windowElements.insert(windowElements.begin(), dataPt);
         }
 
     }
@@ -90,22 +90,21 @@ void slidingWindowThread()
 
 int main(int argc, char* argv[])
 {
-    // int thresholdValue;
-    // if(argc < 1)
-    // {
-    //     thresholdValue = DEBUG_THRESHOLD_VALUE;
+    // this is added to take in the thresholdValue
+    double thresholdValue;
+    if(argc < 2)
+    {
+        thresholdValue = DEBUG_THRESHOLD_VALUE;
 
-    // }
-    // else
-    // {
-    //     thresholdValue = argv[1];
-    // }
-
-    // added for testing
-    // uint8_t testValues[WINDOW_SIZE] = {23,156, 223, 2, 67, 79, 110, 128, 208}; 
+    }
+    else
+    {
+        thresholdValue = std::stod(argv[1]);
+    }
+ 
     std::thread t1(slidingWindowThread);
-    // std::thread t2(filteringThread, DEBUG_THRESHOLD_VALUE);
+    std::thread t2(filteringThread, thresholdValue);
     t1.join();
-    // t2.join();
+    t2.join();
     
 }
