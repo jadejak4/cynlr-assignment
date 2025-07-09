@@ -5,4 +5,4 @@
 
 const char* internalPipeName = R"(\\.\pipe\MyPipe1)";
 
-volatile std::atomic<int> dataPt[2];
+std::atomic<int> dataPt[2];

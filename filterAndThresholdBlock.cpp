@@ -1,5 +1,5 @@
 #include "filterAndThresholdBlock.h"
-#include "common/namedPipes.h"
+#include "common/sharedMemory.h"
 #include "common/commonArgs.h"
 #include <vector>
 #include <thread>

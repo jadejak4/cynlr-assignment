@@ -4,7 +4,7 @@
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
 #include "common/commonArgs.h"
-#include "common/namedPipes.h"
+#include "common/sharedMemory.h"
 #include "dataGenBlock.h"
 
 
@@ -30,26 +30,29 @@ void randomNumberGen()
 
 void sendDataToFilterBlock()
 {
-    HANDLE writerPipe = createWriterPipe(data_fliterPipe);
-    if(writerPipe == INVALID_HANDLE_VALUE)
+    // creating a local buffer
+    uint8_t localBuffer[2];
+    HANDLE hMap = createSharedMemory("Global\\MySharedMemory", 1024);
+    void *ptr = mapSharedMemory(hMap, 1024);
+    if(hMap == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "write pipe handle is invalid" << std::endl;
+        std::cerr << "could not access shared memory " << std::endl;
     }
 
     while (true)
     {
             auto start = std::chrono::high_resolution_clock::now();  // Start timestamp
-            uint8_t  buffer[2];
-            buffer[0] = dataPt[0];
-            buffer[1] = dataPt[1];
-
-            writeToPipe(writerPipe, buffer, 2);
+            localBuffer[0] = dataPt[0];
+            localBuffer[1] = dataPt[1];
+            writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
             auto end = std::chrono::high_resolution_clock::now();  // End timestamp
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
 
 
             std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
     }
+    unmapSharedMemory(ptr);
+    closeSharedMemory(hMap);
 }
 
 
