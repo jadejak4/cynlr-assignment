@@ -7,8 +7,13 @@ void randomNumberGen()
 {
     while (1)
     {
-        dataPt[0] = generateRandomNumber();
-        dataPt[1] = generateRandomNumber();
+        if(!dataUpdated)
+        {
+            dataPt[0] = generateRandomNumber();
+            dataPt[1] = generateRandomNumber();
+            dataUpdated = true;
+        }
+        
     }
 }
 
@@ -36,6 +41,7 @@ void sendDataToFilterBlock()
     {
         localBuffer[0] = dataPt[0];
         localBuffer[1] = dataPt[1];
+        dataUpdated = false;
         writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
     }
 
@@ -47,7 +53,7 @@ void sendDataToFilterBlock()
 int main(int argc, char *argv[])
 {
 
-    if(argc < 1)
+    if(argc < 2)
     {
         // this means we are manually generating the random number
     }

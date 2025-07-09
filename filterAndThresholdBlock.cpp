@@ -29,11 +29,15 @@ void filteringThread(double thresholdValue)
                 std::lock_guard<std::mutex> lock(windowMutex);  
                 localCopy = windowElements;
             }
-
             double res = filteredOutput(localCopy);
-            end = std::chrono::high_resolution_clock::now();
-            duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-            std::cout << duration.count() << std::endl;
+
+            // added just for debugging
+            for (int i = 0; i < localCopy.size(); i++)
+            {
+                std::cout << static_cast<int>(localCopy[i]) << " ";
+            }
+            std::cout << res;
+            std::cout << "\n";
             // this window has been processed. We do not want to porcess the same data again
             windowFull = false;
             if(res >= thresholdValue)
@@ -67,22 +71,28 @@ void slidingWindowThread()
         return;
     }
 
-    while (true)
-    {
-        uint8_t dataPt;  
-        bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
-        if (success)
-        {
-            std::lock_guard<std::mutex> lock(windowMutex);
-            if (windowElements.size() == WINDOW_SIZE)
-            {
-                windowFull = true;
-                windowElements.pop_back();
-            }
-            windowElements.insert(windowElements.begin(), dataPt);
-        }
+while (true)
+{
+    if (windowFull)
+        continue; // wait for filter to consume it
 
+    uint8_t dataPt;
+    bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
+    if (success)
+    {
+        std::lock_guard<std::mutex> lock(windowMutex);
+        if (windowElements.size() == WINDOW_SIZE)
+        {
+            windowElements.pop_back();
+        }
+        windowElements.insert(windowElements.begin(), dataPt);
+
+        if (windowElements.size() == WINDOW_SIZE)
+        {
+            windowFull = true;
+        }
     }
+}
 
     unmapSharedMemory(ptr);
     closeSharedMemory(hMap);
