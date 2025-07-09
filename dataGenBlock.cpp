@@ -1,10 +1,9 @@
-// already correct:
 #include <iostream>
 #include <chrono>
 #include <thread>      // For std::thread
 #include <windows.h>   // For Windows APIs
 #include "common/commonArgs.h"
-#include "common/namedPipes.h"
+#include "common/sharedMemory.h"
 #include "dataGenBlock.h"
 
 
@@ -13,66 +12,49 @@
 
 
 // this can be redefined as a template.
-uint8_t generateRandomNumber()
+inline uint8_t generateRandomNumber()
 {   
     return static_cast<uint8_t>(MIN + std::rand() % (MAX - MIN + 1));
 }
 
-void randomNumberGen1()
+void randomNumberGen()
 {
-    HANDLE hPipe = createWriterPipe(internalPipeName);
-
-    if (hPipe == INVALID_HANDLE_VALUE) {
-        std::cerr << "Failed to connect to pipe. Error: " << GetLastError() << "\n";
-        return;
-    }
     while (1)
     {
-        uint8_t dataPt[2] = { generateRandomNumber(), generateRandomNumber() };
-
-        BOOL success = writeToPipe(hPipe, dataPt, 2);
-        if(!success)
-        {
-            std::cerr << "error writing to the pipe " << std::endl;
-        }
+        dataPt[0] = generateRandomNumber();
+        dataPt[1] = generateRandomNumber();
     }
-    DisconnectNamedPipe(hPipe);
-    CloseHandle(hPipe);
 }
 
 
 void sendDataToFilterBlock()
 {
-    HANDLE writerPipe = createWriterPipe(data_fliterPipe);
-    HANDLE readerPipe = createReaderPipe(internalPipeName);
+    uint8_t localBuffer[2];
 
-    if (readerPipe == INVALID_HANDLE_VALUE || writerPipe == INVALID_HANDLE_VALUE)
+    HANDLE hMap = createSharedMemory(data_fliterMemory, 1024);
+    if (hMap == NULL || hMap == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "Pipe handles are invalid" << std::endl;
+        std::cerr << "CreateFileMapping failed. Error: " << GetLastError() << std::endl;
         return;
     }
 
-    BOOL connected = connectToClient(readerPipe);
+    void* ptr = mapSharedMemory(hMap, 1024);
+    if (ptr == nullptr)
+    {
+        std::cerr << "MapViewOfFile failed. Error: " << GetLastError() << std::endl;
+        CloseHandle(hMap);
+        return;
+    }
 
     while (true)
     {
-        if (connected)
-        {
-            auto start = std::chrono::high_resolution_clock::now();  // Start timestamp
-            auto end = std::chrono::high_resolution_clock::now();  // End timestamp
-
-            uint8_t dataPt[2];
-            BOOL success = readFromPipe(readerPipe, dataPt, 2);
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-            if (success)
-            {
-                writeToPipe(writerPipe, dataPt, 2);
-            }
-
-
-            std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
-        }
+        localBuffer[0] = dataPt[0];
+        localBuffer[1] = dataPt[1];
+        writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
     }
+
+    unmapSharedMemory(ptr);
+    closeSharedMemory(hMap);
 }
 
 
@@ -87,7 +69,7 @@ int main(int argc, char *argv[])
     // starting the thread for receiving the data
     std::thread t2(sendDataToFilterBlock);
     std::this_thread::sleep_for(std::chrono::milliseconds(1)); // wait for pipe to be create
-    std::thread t1(randomNumberGen1); // then start client
+    std::thread t1(randomNumberGen); // then start client
 
     t2.join();
     t1.join();

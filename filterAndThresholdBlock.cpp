@@ -1,12 +1,12 @@
 #include "filterAndThresholdBlock.h"
-#include "common/namedPipes.h"
+#include "common/sharedMemory.h"
 #include "common/commonArgs.h"
 #include <vector>
 #include <thread>
 #include <iostream>
 #include <algorithm>
 
-inline double filteredOutput(const std::vector<uint8_t> values)
+inline double filteredOutput(const std::vector<uint8_t> &values)
 {
     double multipliedVal = 0;
     for(int i = 0; i < WINDOW_SIZE; i++)    
@@ -18,8 +18,7 @@ inline double filteredOutput(const std::vector<uint8_t> values)
 }
 
 
-// we can make it so that 
-void filteringThread(int thresholdValue)
+void filteringThread(double thresholdValue)
 {
     while (1)
     {
@@ -30,15 +29,22 @@ void filteringThread(int thresholdValue)
                 std::lock_guard<std::mutex> lock(windowMutex);  
                 localCopy = windowElements;
             }
+
             double res = filteredOutput(localCopy);
-            if(res < thresholdValue)
+            end = std::chrono::high_resolution_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            std::cout << duration.count() << std::endl;
+            // this window has been processed. We do not want to porcess the same data again
+            windowFull = false;
+            if(res >= thresholdValue)
             {
-                // output true;
+                // output true to the next block
             }
             else
             {
-                //output false;
+                // output false to the next block
             }
+           
         }   
 }
         
@@ -46,56 +52,58 @@ void filteringThread(int thresholdValue)
 
 void slidingWindowThread()
 {
-    
-    HANDLE hPipe = createReaderPipe(data_fliterPipe);
-    if(hPipe == INVALID_HANDLE_VALUE )
+    HANDLE hMap = openSharedMemory(data_fliterMemory);
+    if (hMap == NULL || hMap == INVALID_HANDLE_VALUE)
     {
-        // replace this with the logger process
-        std::cerr << "Pipe cannot be made on the server side" << std::endl;
-    }   
-    BOOL connected = connectToClient(hPipe);
-    if(connected)
-    {
-        std::cout << "Client Connected " << std::endl;
+        std::cerr << "Memory cannot be accessed from the filterSide. Error: " << GetLastError() << std::endl;
+        return;
     }
 
-while (1)
-{
-    uint8_t dataPt;
-    BOOL success = readFromPipe(hPipe, &dataPt, 1);
-    if (success)
+    void* ptr = mapSharedMemory(hMap, 1024);
+    if (ptr == nullptr)
     {
-        std::lock_guard<std::mutex> lock(windowMutex);
-        if (windowElements.size() == WINDOW_SIZE)
+        std::cerr << "MapViewOfFile failed. Error: " << GetLastError() << std::endl;
+        CloseHandle(hMap);
+        return;
+    }
+
+    while (true)
+    {
+        uint8_t dataPt;  
+        bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
+        if (success)
         {
-            windowFull = true;
-            windowElements.pop_back();
+            std::lock_guard<std::mutex> lock(windowMutex);
+            if (windowElements.size() == WINDOW_SIZE)
+            {
+                windowFull = true;
+                windowElements.pop_back();
+            }
+            windowElements.insert(windowElements.begin(), dataPt);
         }
-        windowElements.insert(windowElements.begin(), dataPt);
+
     }
+
+    unmapSharedMemory(ptr);
+    closeSharedMemory(hMap);
 }
-
-
-}
-
 
 int main(int argc, char* argv[])
 {
-    // int thresholdValue;
-    // if(argc < 1)
-    // {
-    //     thresholdValue = DEBUG_THRESHOLD_VALUE;
+    // this is added to take in the thresholdValue
+    double thresholdValue;
+    if(argc < 2)
+    {
+        thresholdValue = DEBUG_THRESHOLD_VALUE;
 
-    // }
-    // else
-    // {
-    //     thresholdValue = argv[1];
-    // }
-
-    // added for testing
-    // uint8_t testValues[WINDOW_SIZE] = {23,156, 223, 2, 67, 79, 110, 128, 208}; 
+    }
+    else
+    {
+        thresholdValue = std::stod(argv[1]);
+    }
+ 
     std::thread t1(slidingWindowThread);
-    std::thread t2(filteringThread, DEBUG_THRESHOLD_VALUE);
+    std::thread t2(filteringThread, thresholdValue);
     t1.join();
     t2.join();
     
