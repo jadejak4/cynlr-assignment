@@ -1,14 +1,15 @@
 #include "filterAndThresholdBlock.h"
 #include "common/namedPipes.h"
 #include "common/commonArgs.h"
+#include <vector>
+#include <thread>
+#include <iostream>
+#include <algorithm>
 
-
-double filteredOutput(const uint8_t *values, int len)
+inline double filteredOutput(const std::vector<uint8_t> values)
 {
     double multipliedVal = 0;
-    if(len != WINDOW_SIZE)
-        return double(0);
-    for(int i = 0; i < WINDOW_SIZE; i++)
+    for(int i = 0; i < WINDOW_SIZE; i++)    
     {
         multipliedVal += double(values[i]) * filterCofficients[i];
     }
@@ -16,14 +17,30 @@ double filteredOutput(const uint8_t *values, int len)
     return multipliedVal;
 }
 
-// void filteringThread(int thresholdValue)
-// {
-//     if(windowFull)
-//     {
-//         filteredOutput   
-//     }
-    
-// }
+
+// we can make it so that 
+void filteringThread(int thresholdValue)
+{
+    while (1)
+    {
+        if(windowFull)
+        {
+            std::vector<uint8_t> localCopy;
+            {   
+                std::lock_guard<std::mutex> lock(windowMutex);  
+                localCopy = windowElements;
+            }
+            for(int i = 0; i < localCopy.size(); i++)
+            {
+                std::cout << static_cast<int>(localCopy[i]) << " ";
+            }
+            std::cout << " output ";
+            double res = filteredOutput(localCopy);
+            std::cout << res << std::endl;
+        }   
+}
+        
+}
 
 void slidingWindowThread()
 {
@@ -40,26 +57,21 @@ void slidingWindowThread()
         std::cout << "Client Connected " << std::endl;
     }
 
-    while(1)
+while (1)
+{
+    uint8_t dataPt;
+    BOOL success = readFromPipe(hPipe, &dataPt, 1);
+    if (success)
     {
-        uint8_t dataPt;
-        BOOL success = readFromPipe(hPipe, &dataPt, 1);
-        if(success)
+        std::lock_guard<std::mutex> lock(windowMutex);
+        if (windowElements.size() == WINDOW_SIZE)
         {
-            if (windowElements.size() == WINDOW_SIZE)
-            {
-                windowElements.pop_back();  // remove last
-            }
-            windowElements.push_front(dataPt); // add new at the front
-            for(int i = 0; i < windowElements.size(); i++)
-            {
-                std::cout << static_cast<int>(windowElements[i]) << " ";
-            }
-            std::cout << "\n" ;
-            // windowFull = true;
+            windowFull = true;
+            windowElements.pop_back();
         }
-
+        windowElements.insert(windowElements.begin(), dataPt);
     }
+}
 
 
 }
@@ -81,6 +93,8 @@ int main(int argc, char* argv[])
     // added for testing
     // uint8_t testValues[WINDOW_SIZE] = {23,156, 223, 2, 67, 79, 110, 128, 208}; 
     std::thread t1(slidingWindowThread);
+    std::thread t2(filteringThread, DEBUG_THRESHOLD_VALUE);
     t1.join();
+    t2.join();
     
 }
