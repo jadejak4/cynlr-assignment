@@ -45,24 +45,34 @@ void sendDataToFilterBlock()
 {
     HANDLE writerPipe = createWriterPipe(data_fliterPipe);
     HANDLE readerPipe = createReaderPipe(internalPipeName);
-    if(readerPipe == INVALID_HANDLE_VALUE || writerPipe == INVALID_HANDLE_VALUE)
+
+    if (readerPipe == INVALID_HANDLE_VALUE || writerPipe == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "pipe handles are invalid " << std::endl;
-    }
-    BOOL connected = connectToClient(readerPipe);
-    while(1)
-    {
-        if(connected)
-        {
-            uint8_t dataPt[2];
-            BOOL success = readFromPipe(readerPipe, dataPt, 2);
-            if(success)
-            {
-                BOOL success = writeToPipe(writerPipe, dataPt, 2);
-            }
-        }
+        std::cerr << "Pipe handles are invalid" << std::endl;
+        return;
     }
 
+    BOOL connected = connectToClient(readerPipe);
+
+    while (true)
+    {
+        if (connected)
+        {
+            auto start = std::chrono::high_resolution_clock::now();  // Start timestamp
+            auto end = std::chrono::high_resolution_clock::now();  // End timestamp
+
+            uint8_t dataPt[2];
+            BOOL success = readFromPipe(readerPipe, dataPt, 2);
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+            if (success)
+            {
+                writeToPipe(writerPipe, dataPt, 2);
+            }
+
+
+            std::cout << "Iteration took: " << duration.count() << " nanoseconds" << std::endl;
+        }
+    }
 }
 
 
