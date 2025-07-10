@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cstdint>
+#include <string>
 
 #define MIN 0
 #define MAX 255

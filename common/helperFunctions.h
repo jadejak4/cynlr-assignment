@@ -41,3 +41,33 @@ std::vector<std::vector<uint8_t>> readCSV(const std::string& filename)
 
     return data;
 }
+
+
+void launchProcess(const std::string& processPath, const std::string& arguments = "") {
+    std::string command = processPath;
+    if (!arguments.empty()) {
+        command += " " + arguments;
+    }
+
+    // Create a mutable buffer for CreateProcessA
+    std::vector<char> cmdBuffer(command.begin(), command.end());
+    cmdBuffer.push_back('\0');  // Null-terminate
+
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+
+    BOOL result = CreateProcessA(
+        nullptr,
+        cmdBuffer.data(),  // ✅ Mutable null-terminated C-string
+        nullptr, nullptr, FALSE, 0,
+        nullptr, nullptr,
+        &si, &pi
+    );
+
+    if (result) {
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+    } else {
+        std::cerr << "Failed to launch: " << command << "\n";
+    }
+}
