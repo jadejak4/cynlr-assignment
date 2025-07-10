@@ -6,7 +6,7 @@
 
 #define MIN 0
 #define MAX 255
-#define DEFAULT_NUM_OF_ROWS 8
+#define DEFAULT_NUM_OF_COLS 8
 
 inline uint8_t generateRandomNumber()
 {
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     if(argc < 2)
     {
         // no input number of rows has been provided, take default
-        m = DEFAULT_NUM_OF_ROWS;
+        m = DEFAULT_NUM_OF_COLS;
     }
     else
     {
