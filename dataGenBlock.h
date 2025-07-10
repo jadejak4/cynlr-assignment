@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <atomic>
+#include <vector>
 
 
 volatile std::atomic<int> dataPt[2];

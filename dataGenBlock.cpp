@@ -17,6 +17,49 @@ void randomNumberGen()
     }
 }
 
+void csvDataFeeder(const std::string& filename, int m)
+{
+    std::vector<std::vector<uint8_t>> data = readCSV(filename);
+    for(int i = 0; i < data.size )
+
+    if (data.empty())
+    {
+        std::cerr << "CSV is empty or failed to load.\n";
+        return;
+    }
+
+    size_t row = 0;
+    size_t col = 0;
+
+    while (true)
+    {
+        if (!dataUpdated)
+        {
+            if (row >= data.size())
+            {
+                row = 0;  
+                col = 0;
+            }
+
+            if (col + 1 >= m)
+            {
+                // Not enough data left in this row — move to next
+                ++row;
+                col = 0;
+                continue;
+            }
+
+            {
+                dataPt[0] = data[row][col];
+                dataPt[1] = data[row][col + 1];
+                dataUpdated = true;
+            }
+
+            col += 2;
+        }
+    }
+}
+
 
 void sendDataToFilterBlock()
 {
@@ -52,22 +95,30 @@ void sendDataToFilterBlock()
 
 int main(int argc, char *argv[])
 {
-
-    if(argc < 2)
+    std::srand(static_cast<unsigned int>(std::time(0)));
+    std::thread t1;
+    // this is testing mode. Meaning we have to generate the 
+    if(argc == 1)
     {
-        // this means we are manually generating the random number
+        t1 = std::thread(randomNumberGen);
+    }
+    else if(argc == 3)
+    {
+        std::string filePath(argv[1]);
+        // number of cols
+        int m = std::stoi(argv[2]);
+        t1 = std::thread(csvDataFeeder, filePath, m); 
     }
     else
     {
-        std::string filePath(argv[1]);
+        std::cerr << "Invalid number of args " << std::endl;
+        return 1;
     }
 
-    std::srand(static_cast<unsigned int>(std::time(0)));
-    // starting the thread for receiving the data
+
     std::thread t2(sendDataToFilterBlock);
 
-    std::thread t1(randomNumberGen); // then start client
-
+    
     t2.join();
     t1.join();
 
