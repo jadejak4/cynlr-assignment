@@ -32,12 +32,12 @@ void filteringThread(double thresholdValue)
             double res = filteredOutput(localCopy);
 
             // added just for debugging
-            // for (int i = 0; i < localCopy.size(); i++)
-            // {
-            //     std::cout << static_cast<int>(localCopy[i]) << " ";
-            // }
-            // std::cout << res;
-            // std::cout << "\n";
+            for (int i = 0; i < localCopy.size(); i++)
+            {
+                std::cout << static_cast<int>(localCopy[i]) << " ";
+            }
+            std::cout << res;
+            std::cout << "\n";
             // this window has been processed. We do not want to porcess the same data again
             windowFull = false;
             if(res >= thresholdValue)
@@ -78,8 +78,11 @@ while (true)
 
     uint8_t dataPt;
     bool success = readFromSharedMemory(ptr, &dataPt, sizeof(dataPt));
+    if(!dataPt)
+        continue;
     if (success)
     {
+        
         std::lock_guard<std::mutex> lock(windowMutex);
         if (windowElements.size() == WINDOW_SIZE)
         {

@@ -20,7 +20,6 @@ void randomNumberGen()
 void csvDataFeeder(const std::string& filename, int m)
 {
     std::vector<std::vector<uint8_t>> data = readCSV(filename);
-    for(int i = 0; i < data.size )
 
     if (data.empty())
     {
@@ -84,6 +83,11 @@ void sendDataToFilterBlock()
     {
         localBuffer[0] = dataPt[0];
         localBuffer[1] = dataPt[1];
+        
+        // this is done so that the same data does not get rewritten to the shared mem
+        dataPt[0].store(0);
+        dataPt[1].store(0);
+        
         dataUpdated = false;
         writeToSharedMemory(ptr, localBuffer, sizeof(localBuffer));
     }
